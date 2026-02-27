@@ -1,0 +1,25 @@
+@import '@vue-flow/core/dist/style.css';
+@import '@vue-flow/core/dist/theme-default.css';
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=PT+Sans:wght@400;700&display=swap');
+
+html,
+body,
+#q-app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'PT Sans', sans-serif;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 197, 102, 0.2), transparent 38%),
+    radial-gradient(circle at 88% 6%, rgba(15, 89, 100, 0.19), transparent 40%),
+    linear-gradient(165deg, #e8f4f2, #f8f5ed);
+  color: #172126;
+}
+
+.text-h5,
+.text-h6,
+.text-h4 {
+  font-family: 'Manrope', sans-serif;
+}
