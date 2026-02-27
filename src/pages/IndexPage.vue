@@ -218,18 +218,7 @@
               </div>
 
               <div v-if="processViewMode === 'graph'" class="process-graph-wrap">
-                <div class="bpmn-lanes-bg">
-                  <div
-                    v-for="lane in bpmnLanes"
-                    :key="lane.key"
-                    class="bpmn-lane-row"
-                    :style="{ top: `${lane.y}px`, height: `${lane.height}px` }"
-                  >
-                    <div class="bpmn-lane-title">{{ lane.label }}</div>
-                  </div>
-                </div>
                 <VueFlow
-                  class="process-flow-canvas"
                   :nodes="processGraphNodes"
                   :edges="processGraphEdges"
                   :nodes-draggable="false"
@@ -663,7 +652,6 @@ const BPMN_LANES: BpmnLaneDefinition[] = [
   { key: 'accounting', label: 'Бухгалтерия', y: 398, height: 112 },
   { key: 'warehouse', label: 'Склад', y: 524, height: 112 },
 ];
-const bpmnLanes = BPMN_LANES;
 
 const BPMN_GRAPH_NODE_SPECS: BpmnGraphNodeSpec[] = [
   { id: 'start', lane: 'requester', kind: 'event-start', label: 'Старт', x: 70 },
@@ -890,6 +878,18 @@ const processGraphNodes = computed<Node[]>(() => {
     return [];
   }
 
+  const laneNodes: Node[] = BPMN_LANES.map((lane, index) => ({
+    id: `lane-${lane.key}`,
+    position: { x: 14, y: lane.y },
+    draggable: false,
+    selectable: false,
+    connectable: false,
+    class: 'bpmn-lane',
+    data: { label: lane.label },
+    style: graphLaneStyle(index),
+    zIndex: 0,
+  }));
+
   const flowNodes: Node[] = BPMN_GRAPH_NODE_SPECS.map((spec) => {
     const lane = laneByKey(spec.lane);
     const state = graphNodeState(request, spec);
@@ -911,11 +911,11 @@ const processGraphNodes = computed<Node[]>(() => {
         label: spec.label,
       },
       style: graphNodeStyle(spec.kind, state),
-      zIndex: 10,
+      zIndex: 20,
     } satisfies Node;
   });
 
-  return flowNodes;
+  return [...laneNodes, ...flowNodes];
 });
 
 const processGraphEdges = computed<Edge[]>(() => {
@@ -932,6 +932,7 @@ const processGraphEdges = computed<Edge[]>(() => {
       target: edgeSpec.target,
       animated: state === 'current',
       style: graphEdgeStyle(state, edgeSpec.dashed === true),
+      zIndex: 10,
     };
 
     if (edgeSpec.label) {
@@ -1948,6 +1949,26 @@ function graphNodeClass(kind: BpmnNodeKind): string {
   return 'bpmn-event';
 }
 
+function graphLaneStyle(index: number): Record<string, string> {
+  const even = index % 2 === 0;
+  return {
+    width: '2940px',
+    height: '112px',
+    border: '1px solid rgba(15, 89, 100, 0.18)',
+    borderRadius: '10px',
+    boxShadow: 'none',
+    background: even
+      ? 'linear-gradient(160deg, rgba(248, 253, 253, 0.88), rgba(238, 248, 248, 0.88))'
+      : 'linear-gradient(160deg, rgba(255, 252, 247, 0.88), rgba(251, 245, 236, 0.88))',
+    color: '#23414a',
+    fontWeight: '700',
+    fontSize: '13px',
+    textAlign: 'left',
+    padding: '7px 12px',
+    pointerEvents: 'none',
+  };
+}
+
 function requestStatusProgress(status: RequestStatus): number {
   const order: Record<RequestStatus, number> = {
     draft: 0,
@@ -2178,7 +2199,6 @@ onMounted(() => {
 }
 
 .process-graph-wrap {
-  position: relative;
   height: 700px;
   border: 1px solid rgba(15, 89, 100, 0.2);
   border-radius: 12px;
@@ -2187,45 +2207,15 @@ onMounted(() => {
     linear-gradient(180deg, rgba(239, 248, 247, 0.8), rgba(253, 250, 242, 0.85));
 }
 
-:deep(.process-flow-canvas) {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-}
-
-.bpmn-lanes-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.bpmn-lane-row {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  border: 1px solid rgba(15, 89, 100, 0.18);
-  border-radius: 10px;
-  background: linear-gradient(160deg, rgba(248, 253, 253, 0.88), rgba(238, 248, 248, 0.88));
-}
-
-.bpmn-lane-row:nth-child(even) {
-  background: linear-gradient(160deg, rgba(255, 252, 247, 0.88), rgba(251, 245, 236, 0.88));
-}
-
-.bpmn-lane-title {
-  position: absolute;
-  top: 7px;
-  left: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #23414a;
-}
-
 :deep(.vue-flow__node-default) {
   white-space: normal;
   line-height: 1.3;
   text-align: left;
+}
+
+:deep(.vue-flow__node.bpmn-lane) {
+  pointer-events: none;
+  line-height: 1.2;
 }
 
 :deep(.vue-flow__node.bpmn-task) {
