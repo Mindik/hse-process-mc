@@ -1,0 +1,95 @@
+:root {
+  --bg-top: #e8f4f2;
+  --bg-bottom: #f8f5ed;
+  --panel-bg: rgba(255, 255, 255, 0.94);
+  --header-bg-1: #0f5964;
+  --header-bg-2: #167380;
+  --header-shadow: rgba(8, 33, 37, 0.26);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "PT Sans", sans-serif;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 197, 102, 0.2), transparent 38%),
+    radial-gradient(circle at 88% 6%, rgba(15, 89, 100, 0.19), transparent 40%),
+    linear-gradient(165deg, var(--bg-top), var(--bg-bottom));
+  color: #172126;
+}
+
+.q-toolbar__title {
+  font-family: "Manrope", sans-serif;
+}
+
+.header-shell {
+  background: linear-gradient(120deg, var(--header-bg-1), var(--header-bg-2));
+  box-shadow: 0 8px 20px var(--header-shadow);
+}
+
+.header-caption {
+  color: rgba(255, 255, 255, 0.82);
+  letter-spacing: 0.1px;
+}
+
+.role-select {
+  min-width: 250px;
+}
+
+.app-bg {
+  min-height: calc(100vh - 112px);
+}
+
+.panel-card {
+  background: var(--panel-bg);
+  border: 1px solid rgba(15, 89, 100, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(22, 36, 44, 0.08);
+}
+
+.stat-card {
+  border-radius: 14px;
+  border: 1px solid rgba(245, 154, 35, 0.28);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.95), rgba(255, 250, 238, 0.9)),
+    radial-gradient(circle at 90% 0%, rgba(245, 154, 35, 0.16), transparent 42%);
+  box-shadow: 0 9px 22px rgba(22, 36, 44, 0.07);
+}
+
+.dialog-card {
+  width: min(980px, 94vw);
+  max-height: 94vh;
+  overflow: auto;
+  border-radius: 14px;
+}
+
+.fade-in {
+  animation: fadeUp 0.35s ease-out;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1024px) {
+  .role-select {
+    min-width: 210px;
+  }
+}
+
+@media (max-width: 760px) {
+  .role-select {
+    width: 100%;
+    margin-top: 8px;
+  }
+}
