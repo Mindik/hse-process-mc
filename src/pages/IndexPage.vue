@@ -41,6 +41,9 @@
         <q-tab name="process" label="Процесс и заявки" icon="account_tree" />
         <q-tab name="suppliers" label="Поставщики" icon="domain" />
         <q-tab name="products" label="Товары" icon="inventory_2" />
+        <q-tab name="blacklist" label="Черный список" icon="gpp_bad" />
+        <q-tab name="limits" label="Лимиты" icon="rule" />
+        <q-tab name="report" label="Отчет руководителя" icon="analytics" />
         <q-tab name="guide" label="To-Be карта" icon="map" />
       </q-tabs>
     </q-card>
@@ -315,8 +318,11 @@
               </template>
             </q-input>
           </div>
-          <div class="col-12 col-md-8 text-right text-caption text-grey-7">
-            Каталог используется при формировании заказа и расчете срока поставки.
+          <div class="col-12 col-md-5 text-right text-caption text-grey-7">
+            Администрирование каталога поставщиков.
+          </div>
+          <div class="col-12 col-md-3 text-right">
+            <q-btn color="primary" icon="add_business" label="Новый поставщик" @click="openCreateSupplierDialog" />
           </div>
         </q-card-section>
         <q-separator />
@@ -330,6 +336,26 @@
           <template #body-cell-rating="props">
             <q-td :props="props">
               <q-rating size="18px" :model-value="props.row.rating" max="5" color="secondary" readonly />
+            </q-td>
+          </template>
+          <template #body-cell-actions="props">
+            <q-td :props="props" class="text-right">
+              <q-btn
+                flat
+                round
+                dense
+                icon="edit"
+                color="primary"
+                @click="openEditSupplierDialog(props.row)"
+              />
+              <q-btn
+                flat
+                round
+                dense
+                icon="delete"
+                color="negative"
+                @click="deleteSupplier(props.row)"
+              />
             </q-td>
           </template>
         </q-table>
@@ -357,8 +383,11 @@
               label="Поставщик"
             />
           </div>
-          <div class="col-12 col-md-4 text-right text-caption text-grey-7">
-            Товары привязаны к поставщикам для имитации выбора в заявке.
+          <div class="col-12 col-md-2 text-right text-caption text-grey-7">
+            Администрирование каталога товаров.
+          </div>
+          <div class="col-12 col-md-2 text-right">
+            <q-btn color="primary" icon="add_box" label="Новый товар" @click="openCreateProductDialog" />
           </div>
         </q-card-section>
         <q-separator />
@@ -374,6 +403,196 @@
           </template>
           <template #body-cell-price="props">
             <q-td :props="props">{{ formatMoney(props.row.price) }}</q-td>
+          </template>
+          <template #body-cell-actions="props">
+            <q-td :props="props" class="text-right">
+              <q-btn
+                flat
+                round
+                dense
+                icon="edit"
+                color="primary"
+                @click="openEditProductDialog(props.row)"
+              />
+              <q-btn
+                flat
+                round
+                dense
+                icon="delete"
+                color="negative"
+                @click="deleteProduct(props.row)"
+              />
+            </q-td>
+          </template>
+        </q-table>
+      </q-card>
+    </div>
+
+    <div v-else-if="activeTab === 'blacklist'" class="fade-in">
+      <q-card class="panel-card">
+        <q-card-section class="row q-col-gutter-sm items-center">
+          <div class="col-12 col-md-4">
+            <q-input v-model.trim="blackListSearch" dense outlined label="Поиск по черному списку" clearable>
+              <template #prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-12 col-md-5 text-right text-caption text-grey-7">
+            Регистр сведений: блокировка проблемных поставщиков.
+          </div>
+          <div class="col-12 col-md-3 text-right">
+            <q-btn color="negative" icon="add_moderator" label="Новая запись" @click="openCreateBlacklistDialog" />
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-table
+          flat
+          row-key="id"
+          :rows="filteredBlackList"
+          :columns="blackListColumns"
+          :pagination="{ rowsPerPage: 8 }"
+        >
+          <template #body-cell-supplier="props">
+            <q-td :props="props">{{ supplierName(props.row.supplierId) }}</q-td>
+          </template>
+          <template #body-cell-dateAdded="props">
+            <q-td :props="props">{{ formatDate(props.row.dateAdded) }}</q-td>
+          </template>
+          <template #body-cell-active="props">
+            <q-td :props="props">
+              <q-chip dense :color="props.row.active ? 'negative' : 'grey-6'" text-color="white">
+                {{ props.row.active ? 'Активна' : 'Отключена' }}
+              </q-chip>
+            </q-td>
+          </template>
+          <template #body-cell-actions="props">
+            <q-td :props="props" class="text-right">
+              <q-btn flat round dense icon="edit" color="primary" @click="openEditBlacklistDialog(props.row)" />
+              <q-btn flat round dense icon="delete" color="negative" @click="deleteBlacklistEntry(props.row)" />
+            </q-td>
+          </template>
+        </q-table>
+      </q-card>
+    </div>
+
+    <div v-else-if="activeTab === 'limits'" class="fade-in">
+      <q-card class="panel-card">
+        <q-card-section class="row q-col-gutter-sm items-center">
+          <div class="col-12 col-md-4">
+            <q-input v-model.trim="limitSearch" dense outlined label="Поиск по лимитам" clearable>
+              <template #prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-12 col-md-5 text-right text-caption text-grey-7">
+            Регистр сведений: лимиты согласования по подразделениям.
+          </div>
+          <div class="col-12 col-md-3 text-right">
+            <q-btn color="primary" icon="add_chart" label="Новый лимит" @click="openCreateLimitDialog" />
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-table
+          flat
+          row-key="id"
+          :rows="filteredLimits"
+          :columns="limitColumns"
+          :pagination="{ rowsPerPage: 8 }"
+        >
+          <template #body-cell-amount="props">
+            <q-td :props="props">{{ formatMoney(props.row.amount) }}</q-td>
+          </template>
+          <template #body-cell-active="props">
+            <q-td :props="props">
+              <q-chip dense :color="props.row.active ? 'positive' : 'grey-6'" text-color="white">
+                {{ props.row.active ? 'Действует' : 'Отключен' }}
+              </q-chip>
+            </q-td>
+          </template>
+          <template #body-cell-actions="props">
+            <q-td :props="props" class="text-right">
+              <q-btn flat round dense icon="edit" color="primary" @click="openEditLimitDialog(props.row)" />
+              <q-btn flat round dense icon="delete" color="negative" @click="deleteLimit(props.row)" />
+            </q-td>
+          </template>
+        </q-table>
+      </q-card>
+    </div>
+
+    <div v-else-if="activeTab === 'report'" class="fade-in">
+      <div class="row q-col-gutter-md q-mb-md">
+        <div v-for="card in reportCards" :key="card.key" class="col-12 col-sm-6 col-lg-3">
+          <q-card class="stat-card">
+            <q-card-section>
+              <div class="text-caption">{{ card.label }}</div>
+              <div class="text-h4 text-weight-bold">{{ card.value }}</div>
+              <div class="text-caption text-grey-7">{{ card.caption }}</div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+      <q-card class="panel-card">
+        <q-card-section class="row q-col-gutter-sm items-center">
+          <div class="col-12 col-md-5">
+            <q-input
+              v-model.trim="reportSearch"
+              dense
+              outlined
+              label="Поиск в отчете"
+              clearable
+              debounce="200"
+            >
+              <template #prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-12 col-md-4">
+            <q-select
+              v-model="reportStatusFilter"
+              dense
+              outlined
+              emit-value
+              map-options
+              :options="reportStatusOptions"
+              label="Профиль статусов"
+            />
+          </div>
+          <div class="col-12 col-md-3 text-right text-caption text-grey-7">
+            Заявки для оперативного управленческого контроля.
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-table
+          flat
+          row-key="id"
+          :rows="managementRows"
+          :columns="reportColumns"
+          :pagination="{ rowsPerPage: 10 }"
+        >
+          <template #body-cell-id="props">
+            <q-td :props="props">
+              <q-btn flat dense no-caps color="primary" :label="props.row.id" @click="openRequestFromReport(props.row.id)" />
+            </q-td>
+          </template>
+          <template #body-cell-status="props">
+            <q-td :props="props">
+              <q-chip dense :color="statusColor(props.row.status)" text-color="white">
+                {{ statusLabel(props.row.status) }}
+              </q-chip>
+            </q-td>
+          </template>
+          <template #body-cell-total="props">
+            <q-td :props="props">{{ formatMoney(props.row.total) }}</q-td>
+          </template>
+          <template #body-cell-overdue="props">
+            <q-td :props="props">
+              <q-chip dense :color="props.row.overdue ? 'negative' : 'positive'" text-color="white">
+                {{ props.row.overdue ? 'Просрочка' : 'В норме' }}
+              </q-chip>
+            </q-td>
           </template>
         </q-table>
       </q-card>
@@ -491,6 +710,189 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="supplierDialog.open" persistent>
+      <q-card class="dialog-card admin-dialog">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">{{ supplierDialog.isEdit ? 'Редактирование поставщика' : 'Новый поставщик' }}</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input v-model.trim="supplierForm.name" outlined dense label="Наименование *" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input v-model.trim="supplierForm.inn" outlined dense label="ИНН *" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input v-model.trim="supplierForm.city" outlined dense label="Город *" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model.trim="supplierForm.email" outlined dense label="Email *" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model.trim="supplierForm.phone" outlined dense label="Телефон *" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model.trim="supplierForm.category" outlined dense label="Категория *" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input
+                v-model.number="supplierForm.leadTimeDays"
+                outlined
+                dense
+                type="number"
+                min="1"
+                label="Срок поставки, дн *"
+              />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-select
+                v-model.number="supplierForm.rating"
+                outlined
+                dense
+                emit-value
+                map-options
+                :options="ratingOptions"
+                label="Рейтинг *"
+              />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Отмена" color="grey-8" v-close-popup />
+          <q-btn color="primary" label="Сохранить" @click="saveSupplierFromDialog" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="productDialog.open" persistent>
+      <q-card class="dialog-card admin-dialog">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">{{ productDialog.isEdit ? 'Редактирование товара' : 'Новый товар' }}</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input v-model.trim="productForm.name" outlined dense label="Наименование *" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input v-model.trim="productForm.sku" outlined dense label="Артикул *" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input v-model.trim="productForm.unit" outlined dense label="Ед. изм. *" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-select
+                v-model="productForm.supplierId"
+                outlined
+                dense
+                emit-value
+                map-options
+                :options="supplierOptions"
+                label="Поставщик *"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model.trim="productForm.category" outlined dense label="Категория *" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model.number="productForm.price" outlined dense type="number" min="1" label="Цена, ₽ *" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model.number="productForm.stock" outlined dense type="number" min="0" label="Остаток *" />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Отмена" color="grey-8" v-close-popup />
+          <q-btn color="primary" label="Сохранить" @click="saveProductFromDialog" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="blackListDialog.open" persistent>
+      <q-card class="dialog-card admin-dialog">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">
+            {{ blackListDialog.isEdit ? 'Редактирование записи' : 'Новая запись черного списка' }}
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <div class="row q-col-gutter-md">
+            <div class="col-12">
+              <q-select
+                v-model="blackListForm.supplierId"
+                outlined
+                dense
+                emit-value
+                map-options
+                :options="supplierOptions"
+                label="Поставщик *"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model="blackListForm.dateAdded" outlined dense type="date" label="Дата внесения *" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model.trim="blackListForm.addedBy" outlined dense label="Кем внесено *" />
+            </div>
+            <div class="col-12">
+              <q-input v-model.trim="blackListForm.reason" outlined dense autogrow type="textarea" label="Причина *" />
+            </div>
+            <div class="col-12">
+              <q-toggle v-model="blackListForm.active" color="negative" label="Запись активна" />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Отмена" color="grey-8" v-close-popup />
+          <q-btn color="primary" label="Сохранить" @click="saveBlacklistFromDialog" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="limitDialog.open" persistent>
+      <q-card class="dialog-card admin-dialog">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">{{ limitDialog.isEdit ? 'Редактирование лимита' : 'Новый лимит согласования' }}</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input v-model.trim="limitForm.department" outlined dense label="Подразделение *" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input v-model.number="limitForm.amount" outlined dense type="number" min="1" label="Лимит, ₽ *" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input :model-value="limitForm.currency" outlined dense label="Валюта" readonly />
+            </div>
+            <div class="col-12">
+              <q-input v-model.trim="limitForm.approver" outlined dense label="Согласующий *" />
+            </div>
+            <div class="col-12">
+              <q-input v-model.trim="limitForm.comment" outlined dense autogrow type="textarea" label="Комментарий" />
+            </div>
+            <div class="col-12">
+              <q-toggle v-model="limitForm.active" color="primary" label="Лимит действует" />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Отмена" color="grey-8" v-close-popup />
+          <q-btn color="primary" label="Сохранить" @click="saveLimitFromDialog" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -499,6 +901,8 @@ import { computed, onMounted, ref } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { VueFlow, type Edge, type Node } from '@vue-flow/core';
 import {
+  type ApprovalLimit,
+  type BlacklistEntry,
   clone,
   createDemoState,
   dateOffset,
@@ -518,14 +922,24 @@ import {
   type UserRole,
 } from 'src/data/procurement';
 
-type ActiveTab = 'process' | 'suppliers' | 'products' | 'guide';
+type ActiveTab =
+  | 'process'
+  | 'suppliers'
+  | 'products'
+  | 'blacklist'
+  | 'limits'
+  | 'report'
+  | 'guide';
 type ProcessViewMode = 'graph' | 'list';
 type StatusFilter = 'all' | RequestStatus;
 type ProductSupplierFilter = 'all' | number;
+type ReportStatusFilter = 'all' | 'attention' | RequestStatus;
 type ActionKey =
   | 'edit'
   | 'submit'
   | 'runCheck'
+  | 'approveRequest'
+  | 'rejectRequest'
   | 'sendOrder'
   | 'receiveInvoice'
   | 'payInvoice'
@@ -564,6 +978,68 @@ interface RequestDialogState {
   requestId: string | null;
 }
 
+interface SupplierDialogState {
+  open: boolean;
+  isEdit: boolean;
+  supplierId: number | null;
+}
+
+interface ProductDialogState {
+  open: boolean;
+  isEdit: boolean;
+  productId: number | null;
+}
+
+interface BlacklistDialogState {
+  open: boolean;
+  isEdit: boolean;
+  entryId: number | null;
+}
+
+interface LimitDialogState {
+  open: boolean;
+  isEdit: boolean;
+  limitId: number | null;
+}
+
+interface SupplierFormState {
+  name: string;
+  city: string;
+  inn: string;
+  email: string;
+  phone: string;
+  leadTimeDays: number;
+  rating: number;
+  category: string;
+}
+
+interface ProductFormState {
+  supplierId: number | null;
+  name: string;
+  unit: string;
+  price: number;
+  stock: number;
+  sku: string;
+  category: string;
+}
+
+interface BlacklistFormState {
+  supplierId: number | null;
+  reason: string;
+  dateAdded: string;
+  addedBy: string;
+  active: boolean;
+}
+
+interface LimitFormState {
+  department: string;
+  amount: number;
+  currency: 'RUB';
+  approver: string;
+  active: boolean;
+  comment: string;
+}
+
 interface ActionDefinition {
   key: ActionKey;
   label: string;
@@ -578,6 +1054,18 @@ interface StageGuidance {
   title: string;
   roleLabel: string;
   text: string;
+}
+
+interface ManagementRow {
+  id: string;
+  department: string;
+  supplier: string;
+  status: RequestStatus;
+  total: number;
+  responsibleRole: string;
+  daysInStatus: number;
+  overdue: boolean;
+  updatedAt: string;
 }
 
 type StepVisualState = 'done' | 'current' | 'error' | 'pending';
@@ -607,7 +1095,7 @@ interface BpmnGraphEdgeSpec {
   dashed?: boolean;
 }
 
-const STORAGE_KEY = 'mk-procurement-prototype-v3';
+const STORAGE_KEY = 'mk-procurement-prototype-v4';
 
 const $q = useQuasar();
 
@@ -619,10 +1107,16 @@ const statusFilter = ref<StatusFilter>('all');
 const supplierSearch = ref('');
 const productSearch = ref('');
 const productSupplierFilter = ref<ProductSupplierFilter>('all');
+const blackListSearch = ref('');
+const limitSearch = ref('');
+const reportSearch = ref('');
+const reportStatusFilter = ref<ReportStatusFilter>('attention');
 
 const suppliers = ref<Supplier[]>([]);
 const products = ref<Product[]>([]);
 const requests = ref<ProcurementRequest[]>([]);
+const blackList = ref<BlacklistEntry[]>([]);
+const approvalLimits = ref<ApprovalLimit[]>([]);
 const selectedRequestId = ref<string | null>(null);
 
 const requestDialog = ref<RequestDialogState>({
@@ -631,9 +1125,64 @@ const requestDialog = ref<RequestDialogState>({
   requestId: null,
 });
 const form = ref<RequestFormState>(emptyFormState());
+const supplierDialog = ref<SupplierDialogState>({
+  open: false,
+  isEdit: false,
+  supplierId: null,
+});
+const productDialog = ref<ProductDialogState>({
+  open: false,
+  isEdit: false,
+  productId: null,
+});
+const blackListDialog = ref<BlacklistDialogState>({
+  open: false,
+  isEdit: false,
+  entryId: null,
+});
+const limitDialog = ref<LimitDialogState>({
+  open: false,
+  isEdit: false,
+  limitId: null,
+});
+const supplierForm = ref<SupplierFormState>({
+  name: '',
+  city: '',
+  inn: '',
+  email: '',
+  phone: '',
+  leadTimeDays: 3,
+  rating: 4,
+  category: '',
+});
+const productForm = ref<ProductFormState>({
+  supplierId: null,
+  name: '',
+  unit: 'шт',
+  price: 0,
+  stock: 0,
+  sku: '',
+  category: '',
+});
+const blackListForm = ref<BlacklistFormState>({
+  supplierId: null,
+  reason: '',
+  dateAdded: formatIsoDate(new Date()),
+  addedBy: '',
+  active: true,
+});
+const limitForm = ref<LimitFormState>({
+  department: '',
+  amount: 0,
+  currency: 'RUB',
+  approver: '',
+  active: true,
+  comment: '',
+});
 
 const roleOptions: Option<UserRole>[] = [
   { label: 'Подразделение-заказчик', value: 'requester' },
+  { label: 'Руководитель', value: 'manager' },
   { label: 'Отдел снабжения', value: 'supply' },
   { label: 'Бухгалтерия', value: 'accounting' },
   { label: 'Склад', value: 'warehouse' },
@@ -643,6 +1192,14 @@ const roleOptions: Option<UserRole>[] = [
 const processViewOptions: Option<ProcessViewMode>[] = [
   { label: 'Граф', value: 'graph' },
   { label: 'Список', value: 'list' },
+];
+
+const ratingOptions: Option<number>[] = [
+  { label: '1', value: 1 },
+  { label: '2', value: 2 },
+  { label: '3', value: 3 },
+  { label: '4', value: 4 },
+  { label: '5', value: 5 },
 ];
 
 const BPMN_LANES: BpmnLaneDefinition[] = [
@@ -719,6 +1276,7 @@ const supplierColumns: QTableColumn<Supplier>[] = [
   { name: 'leadTimeDays', label: 'Срок поставки, дн', field: 'leadTimeDays', align: 'right', sortable: true },
   { name: 'rating', label: 'Рейтинг', field: 'rating', align: 'center' },
   { name: 'email', label: 'Email', field: 'email', align: 'left' },
+  { name: 'actions', label: '', field: 'id', align: 'right' },
 ];
 
 const productColumns: QTableColumn<Product>[] = [
@@ -728,6 +1286,36 @@ const productColumns: QTableColumn<Product>[] = [
   { name: 'sku', label: 'Артикул', field: 'sku', align: 'left' },
   { name: 'price', label: 'Цена', field: 'price', align: 'right', sortable: true },
   { name: 'stock', label: 'Остаток', field: 'stock', align: 'right', sortable: true },
+  { name: 'actions', label: '', field: 'id', align: 'right' },
+];
+
+const blackListColumns: QTableColumn<BlacklistEntry>[] = [
+  { name: 'supplier', label: 'Поставщик', field: 'supplierId', align: 'left' },
+  { name: 'reason', label: 'Причина', field: 'reason', align: 'left' },
+  { name: 'dateAdded', label: 'Дата внесения', field: 'dateAdded', align: 'left', sortable: true },
+  { name: 'addedBy', label: 'Кем внесен', field: 'addedBy', align: 'left' },
+  { name: 'active', label: 'Статус', field: 'active', align: 'left' },
+  { name: 'actions', label: '', field: 'id', align: 'right' },
+];
+
+const limitColumns: QTableColumn<ApprovalLimit>[] = [
+  { name: 'department', label: 'Подразделение', field: 'department', align: 'left', sortable: true },
+  { name: 'amount', label: 'Лимит', field: 'amount', align: 'right', sortable: true },
+  { name: 'approver', label: 'Согласующий', field: 'approver', align: 'left' },
+  { name: 'comment', label: 'Комментарий', field: 'comment', align: 'left' },
+  { name: 'active', label: 'Статус', field: 'active', align: 'left' },
+  { name: 'actions', label: '', field: 'id', align: 'right' },
+];
+
+const reportColumns: QTableColumn<ManagementRow>[] = [
+  { name: 'id', label: 'Заявка', field: 'id', align: 'left', sortable: true },
+  { name: 'department', label: 'Подразделение', field: 'department', align: 'left', sortable: true },
+  { name: 'supplier', label: 'Поставщик', field: 'supplier', align: 'left' },
+  { name: 'status', label: 'Статус', field: 'status', align: 'left', sortable: true },
+  { name: 'responsibleRole', label: 'Ожидаемая роль', field: 'responsibleRole', align: 'left' },
+  { name: 'total', label: 'Сумма', field: 'total', align: 'right', sortable: true },
+  { name: 'daysInStatus', label: 'Дней в статусе', field: 'daysInStatus', align: 'right', sortable: true },
+  { name: 'overdue', label: 'SLA', field: 'overdue', align: 'left', sortable: true },
 ];
 
 const statusOptions = computed<Option<StatusFilter>[]>(() => {
@@ -738,6 +1326,15 @@ const statusOptions = computed<Option<StatusFilter>[]>(() => {
   }));
   return [all, ...statuses];
 });
+
+const reportStatusOptions = computed<Option<ReportStatusFilter>[]>(() => [
+  { label: 'Только требующие внимания', value: 'attention' },
+  { label: 'Все статусы', value: 'all' },
+  ...(Object.keys(statusMeta) as RequestStatus[]).map((status) => ({
+    label: statusMeta[status].label,
+    value: status,
+  })),
+]);
 
 const supplierOptions = computed<Option<number>[]>(() =>
   suppliers.value.map((supplier) => ({ label: supplier.name, value: supplier.id })),
@@ -810,6 +1407,89 @@ const filteredProducts = computed<Product[]>(() => {
         supplierName(row.supplierId).toLowerCase().includes(search)
       );
     });
+});
+
+const filteredBlackList = computed<BlacklistEntry[]>(() => {
+  const search = blackListSearch.value.toLowerCase();
+  return blackList.value
+    .filter((entry) => {
+      if (!search) {
+        return true;
+      }
+      return (
+        supplierName(entry.supplierId).toLowerCase().includes(search) ||
+        entry.reason.toLowerCase().includes(search) ||
+        entry.addedBy.toLowerCase().includes(search)
+      );
+    })
+    .sort((a, b) => b.dateAdded.localeCompare(a.dateAdded));
+});
+
+const filteredLimits = computed<ApprovalLimit[]>(() => {
+  const search = limitSearch.value.toLowerCase();
+  return approvalLimits.value
+    .filter((row) => {
+      if (!search) {
+        return true;
+      }
+      return (
+        row.department.toLowerCase().includes(search) ||
+        row.approver.toLowerCase().includes(search) ||
+        row.comment.toLowerCase().includes(search)
+      );
+    })
+    .sort((a, b) => a.department.localeCompare(b.department, 'ru'));
+});
+
+const managementRows = computed<ManagementRow[]>(() =>
+  requests.value
+    .map((request) => ({
+      id: request.id,
+      department: request.department,
+      supplier: supplierName(request.supplierId),
+      status: request.status,
+      total: requestTotal(request),
+      responsibleRole: expectedRoleLabel(request),
+      daysInStatus: daysInCurrentStatus(request),
+      overdue: isOverdue(request),
+      updatedAt: request.updatedAt,
+    }))
+    .filter((row) => {
+      if (reportStatusFilter.value === 'all') {
+        return true;
+      }
+      if (reportStatusFilter.value === 'attention') {
+        return row.status === 'pending_approval' || row.status === 'submitted' || row.overdue;
+      }
+      return row.status === reportStatusFilter.value;
+    })
+    .filter((row) => {
+      const search = reportSearch.value.trim().toLowerCase();
+      if (!search) {
+        return true;
+      }
+      return (
+        row.id.toLowerCase().includes(search) ||
+        row.department.toLowerCase().includes(search) ||
+        row.supplier.toLowerCase().includes(search)
+      );
+    })
+    .sort((a, b) => b.daysInStatus - a.daysInStatus),
+);
+
+const reportCards = computed<DashboardCard[]>(() => {
+  const inWork = requests.value.filter((row) => row.status !== 'completed' && row.status !== 'rejected').length;
+  const pendingApproval = requests.value.filter((row) => row.status === 'pending_approval').length;
+  const overdue = requests.value.filter((row) => isOverdue(row)).length;
+  const autoApproved = requests.value.filter((row) =>
+    row.history.some((entry) => entry.action.toLowerCase().includes('автоодобр')),
+  ).length;
+  return [
+    { key: 'rw-in-work', label: 'В работе', value: inWork, caption: 'активные заявки' },
+    { key: 'rw-approval', label: 'Ожидают решения', value: pendingApproval, caption: 'нужна роль руководителя' },
+    { key: 'rw-overdue', label: 'Просрочка SLA', value: overdue, caption: 'требуется реакция снабжения' },
+    { key: 'rw-auto', label: 'Автоодобрено', value: autoApproved, caption: 'по правилам DMN' },
+  ];
 });
 
 const selectedRequest = computed<ProcurementRequest | null>(
@@ -1022,6 +1702,8 @@ function persistState(): void {
     suppliers: suppliers.value,
     products: products.value,
     requests: requests.value,
+    blackList: blackList.value,
+    approvalLimits: approvalLimits.value,
     selectedRequestId: selectedRequestId.value,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1035,12 +1717,19 @@ function initData(): void {
         suppliers?: Supplier[];
         products?: Product[];
         requests?: ProcurementRequest[];
+        blackList?: BlacklistEntry[];
+        approvalLimits?: ApprovalLimit[];
         selectedRequestId?: string | null;
       };
       if (Array.isArray(parsed.suppliers) && Array.isArray(parsed.products) && Array.isArray(parsed.requests)) {
+        const defaults = createDemoState();
         suppliers.value = parsed.suppliers;
         products.value = parsed.products;
         requests.value = parsed.requests;
+        blackList.value = Array.isArray(parsed.blackList) ? parsed.blackList : defaults.blackList;
+        approvalLimits.value = Array.isArray(parsed.approvalLimits)
+          ? parsed.approvalLimits
+          : defaults.approvalLimits;
         selectedRequestId.value = parsed.selectedRequestId ?? (requests.value[0]?.id ?? null);
         return;
       }
@@ -1053,6 +1742,8 @@ function initData(): void {
   suppliers.value = demo.suppliers;
   products.value = demo.products;
   requests.value = demo.requests;
+  blackList.value = demo.blackList;
+  approvalLimits.value = demo.approvalLimits;
   selectedRequestId.value = demo.selectedRequestId;
   persistState();
 }
@@ -1069,6 +1760,8 @@ function resetDemoData(): void {
     suppliers.value = demo.suppliers;
     products.value = demo.products;
     requests.value = demo.requests;
+    blackList.value = demo.blackList;
+    approvalLimits.value = demo.approvalLimits;
     selectedRequestId.value = demo.selectedRequestId;
     persistState();
     $q.notify({ type: 'positive', message: 'Демо-данные восстановлены.' });
@@ -1077,6 +1770,12 @@ function resetDemoData(): void {
 
 function onRequestRowClick(_evt: Event, row: ProcurementRequest): void {
   selectedRequestId.value = row.id;
+  persistState();
+}
+
+function openRequestFromReport(requestId: string): void {
+  selectedRequestId.value = requestId;
+  activeTab.value = 'process';
   persistState();
 }
 
@@ -1216,6 +1915,487 @@ function saveRequestFromDialog(): void {
   $q.notify({ type: 'positive', message: 'Заявка сохранена.' });
 }
 
+function emptySupplierForm(): SupplierFormState {
+  return {
+    name: '',
+    city: '',
+    inn: '',
+    email: '',
+    phone: '',
+    leadTimeDays: 3,
+    rating: 4,
+    category: '',
+  };
+}
+
+function emptyProductForm(): ProductFormState {
+  return {
+    supplierId: null,
+    name: '',
+    unit: 'шт',
+    price: 0,
+    stock: 0,
+    sku: '',
+    category: '',
+  };
+}
+
+function generateSupplierId(): number {
+  return suppliers.value.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+}
+
+function generateProductId(): number {
+  return products.value.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+}
+
+function openCreateSupplierDialog(): void {
+  supplierDialog.value.open = true;
+  supplierDialog.value.isEdit = false;
+  supplierDialog.value.supplierId = null;
+  supplierForm.value = emptySupplierForm();
+}
+
+function openEditSupplierDialog(supplier: Supplier): void {
+  supplierDialog.value.open = true;
+  supplierDialog.value.isEdit = true;
+  supplierDialog.value.supplierId = supplier.id;
+  supplierForm.value = {
+    name: supplier.name,
+    city: supplier.city,
+    inn: supplier.inn,
+    email: supplier.email,
+    phone: supplier.phone,
+    leadTimeDays: supplier.leadTimeDays,
+    rating: supplier.rating,
+    category: supplier.category,
+  };
+}
+
+function validateSupplierForm(excludeId: number | null): string | null {
+  const formData = supplierForm.value;
+  if (
+    !formData.name.trim() ||
+    !formData.city.trim() ||
+    !formData.inn.trim() ||
+    !formData.email.trim() ||
+    !formData.phone.trim() ||
+    !formData.category.trim()
+  ) {
+    return 'Заполните все обязательные поля поставщика.';
+  }
+  if (!/^\d{10}$|^\d{12}$/.test(formData.inn.trim())) {
+    return 'ИНН должен содержать 10 или 12 цифр.';
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(formData.email.trim())) {
+    return 'Укажите корректный email.';
+  }
+  if (!formData.leadTimeDays || formData.leadTimeDays < 1) {
+    return 'Срок поставки должен быть не меньше 1 дня.';
+  }
+  if (!formData.rating || formData.rating < 1 || formData.rating > 5) {
+    return 'Рейтинг должен быть в диапазоне 1..5.';
+  }
+
+  const duplicateInn = suppliers.value.find(
+    (item) => item.inn === formData.inn.trim() && item.id !== excludeId,
+  );
+  if (duplicateInn) {
+    return 'Поставщик с таким ИНН уже существует.';
+  }
+
+  return null;
+}
+
+function saveSupplierFromDialog(): void {
+  const error = validateSupplierForm(supplierDialog.value.isEdit ? supplierDialog.value.supplierId : null);
+  if (error) {
+    $q.notify({ type: 'negative', message: error });
+    return;
+  }
+
+  const payload = {
+    name: supplierForm.value.name.trim(),
+    city: supplierForm.value.city.trim(),
+    inn: supplierForm.value.inn.trim(),
+    email: supplierForm.value.email.trim(),
+    phone: supplierForm.value.phone.trim(),
+    leadTimeDays: Number(supplierForm.value.leadTimeDays),
+    rating: Number(supplierForm.value.rating),
+    category: supplierForm.value.category.trim(),
+  };
+
+  if (supplierDialog.value.isEdit) {
+    const supplier = suppliers.value.find((row) => row.id === supplierDialog.value.supplierId);
+    if (!supplier) {
+      $q.notify({ type: 'negative', message: 'Поставщик не найден.' });
+      return;
+    }
+    Object.assign(supplier, payload);
+  } else {
+    suppliers.value.push({
+      id: generateSupplierId(),
+      ...payload,
+    });
+  }
+
+  persistState();
+  supplierDialog.value.open = false;
+  $q.notify({ type: 'positive', message: 'Поставщик сохранен.' });
+}
+
+function deleteSupplier(supplier: Supplier): void {
+  const hasRequests = requests.value.some((request) => request.supplierId === supplier.id);
+  if (hasRequests) {
+    $q.notify({
+      type: 'negative',
+      message: 'Нельзя удалить поставщика, он используется в заявках.',
+    });
+    return;
+  }
+  const hasProducts = products.value.some((product) => product.supplierId === supplier.id);
+  if (hasProducts) {
+    $q.notify({
+      type: 'negative',
+      message: 'Сначала удалите или перенесите товары этого поставщика.',
+    });
+    return;
+  }
+  const hasBlackListEntry = blackList.value.some((entry) => entry.supplierId === supplier.id);
+  if (hasBlackListEntry) {
+    $q.notify({
+      type: 'negative',
+      message: 'Сначала удалите записи этого поставщика из черного списка.',
+    });
+    return;
+  }
+
+  $q.dialog({
+    title: 'Удаление поставщика',
+    message: `Удалить "${supplier.name}"?`,
+    persistent: true,
+    ok: { label: 'Удалить', color: 'negative' },
+    cancel: { label: 'Отмена', flat: true },
+  }).onOk(() => {
+    suppliers.value = suppliers.value.filter((row) => row.id !== supplier.id);
+    if (productSupplierFilter.value === supplier.id) {
+      productSupplierFilter.value = 'all';
+    }
+    persistState();
+    $q.notify({ type: 'positive', message: 'Поставщик удален.' });
+  });
+}
+
+function openCreateProductDialog(): void {
+  if (!suppliers.value.length) {
+    $q.notify({ type: 'warning', message: 'Сначала добавьте хотя бы одного поставщика.' });
+    return;
+  }
+  productDialog.value.open = true;
+  productDialog.value.isEdit = false;
+  productDialog.value.productId = null;
+  const initialSupplier =
+    typeof productSupplierFilter.value === 'number'
+      ? productSupplierFilter.value
+      : (suppliers.value[0]?.id ?? null);
+  productForm.value = {
+    ...emptyProductForm(),
+    supplierId: initialSupplier,
+  };
+}
+
+function openEditProductDialog(product: Product): void {
+  productDialog.value.open = true;
+  productDialog.value.isEdit = true;
+  productDialog.value.productId = product.id;
+  productForm.value = {
+    supplierId: product.supplierId,
+    name: product.name,
+    unit: product.unit,
+    price: product.price,
+    stock: product.stock,
+    sku: product.sku,
+    category: product.category,
+  };
+}
+
+function validateProductForm(excludeId: number | null): string | null {
+  const formData = productForm.value;
+  if (
+    !formData.name.trim() ||
+    !formData.sku.trim() ||
+    !formData.unit.trim() ||
+    !formData.category.trim() ||
+    !formData.supplierId
+  ) {
+    return 'Заполните все обязательные поля товара.';
+  }
+  if (!formData.price || formData.price <= 0) {
+    return 'Цена должна быть больше 0.';
+  }
+  if (formData.stock < 0) {
+    return 'Остаток не может быть отрицательным.';
+  }
+
+  const duplicateSku = products.value.find(
+    (item) => item.sku.toLowerCase() === formData.sku.trim().toLowerCase() && item.id !== excludeId,
+  );
+  if (duplicateSku) {
+    return 'Товар с таким артикулом уже существует.';
+  }
+  return null;
+}
+
+function saveProductFromDialog(): void {
+  const error = validateProductForm(productDialog.value.isEdit ? productDialog.value.productId : null);
+  if (error) {
+    $q.notify({ type: 'negative', message: error });
+    return;
+  }
+
+  const payload = {
+    supplierId: Number(productForm.value.supplierId),
+    name: productForm.value.name.trim(),
+    unit: productForm.value.unit.trim(),
+    price: Number(productForm.value.price),
+    stock: Number(productForm.value.stock),
+    sku: productForm.value.sku.trim(),
+    category: productForm.value.category.trim(),
+  };
+
+  if (productDialog.value.isEdit) {
+    const product = products.value.find((row) => row.id === productDialog.value.productId);
+    if (!product) {
+      $q.notify({ type: 'negative', message: 'Товар не найден.' });
+      return;
+    }
+    Object.assign(product, payload);
+  } else {
+    products.value.push({
+      id: generateProductId(),
+      ...payload,
+    });
+  }
+
+  persistState();
+  productDialog.value.open = false;
+  $q.notify({ type: 'positive', message: 'Товар сохранен.' });
+}
+
+function deleteProduct(product: Product): void {
+  const usedInRequests = requests.value.some((request) =>
+    request.items.some((item) => item.productId === product.id),
+  );
+  if (usedInRequests) {
+    $q.notify({
+      type: 'negative',
+      message: 'Нельзя удалить товар, он уже используется в заявках.',
+    });
+    return;
+  }
+
+  $q.dialog({
+    title: 'Удаление товара',
+    message: `Удалить "${product.name}"?`,
+    persistent: true,
+    ok: { label: 'Удалить', color: 'negative' },
+    cancel: { label: 'Отмена', flat: true },
+  }).onOk(() => {
+    products.value = products.value.filter((row) => row.id !== product.id);
+    form.value.items = form.value.items.map((item) =>
+      item.productId === product.id
+        ? {
+            ...item,
+            productId: null,
+          }
+        : item,
+    );
+    persistState();
+    $q.notify({ type: 'positive', message: 'Товар удален.' });
+  });
+}
+
+function emptyBlacklistForm(): BlacklistFormState {
+  return {
+    supplierId: null,
+    reason: '',
+    dateAdded: formatIsoDate(new Date()),
+    addedBy: '',
+    active: true,
+  };
+}
+
+function emptyLimitForm(): LimitFormState {
+  return {
+    department: '',
+    amount: 0,
+    currency: 'RUB',
+    approver: '',
+    active: true,
+    comment: '',
+  };
+}
+
+function generateBlacklistId(): number {
+  return blackList.value.reduce((max, row) => Math.max(max, row.id), 0) + 1;
+}
+
+function generateLimitId(): number {
+  return approvalLimits.value.reduce((max, row) => Math.max(max, row.id), 0) + 1;
+}
+
+function openCreateBlacklistDialog(): void {
+  if (!suppliers.value.length) {
+    $q.notify({ type: 'warning', message: 'Сначала добавьте поставщиков.' });
+    return;
+  }
+  blackListDialog.value = { open: true, isEdit: false, entryId: null };
+  blackListForm.value = emptyBlacklistForm();
+}
+
+function openEditBlacklistDialog(entry: BlacklistEntry): void {
+  blackListDialog.value = { open: true, isEdit: true, entryId: entry.id };
+  blackListForm.value = {
+    supplierId: entry.supplierId,
+    reason: entry.reason,
+    dateAdded: entry.dateAdded,
+    addedBy: entry.addedBy,
+    active: entry.active,
+  };
+}
+
+function saveBlacklistFromDialog(): void {
+  if (!blackListForm.value.supplierId || !blackListForm.value.reason.trim() || !blackListForm.value.addedBy.trim()) {
+    $q.notify({ type: 'negative', message: 'Заполните поставщика, причину и автора записи.' });
+    return;
+  }
+  const duplicate = blackList.value.find(
+    (row) =>
+      row.supplierId === blackListForm.value.supplierId &&
+      row.active &&
+      row.id !== blackListDialog.value.entryId,
+  );
+  if (duplicate) {
+    $q.notify({ type: 'negative', message: 'Для этого поставщика уже есть активная запись черного списка.' });
+    return;
+  }
+
+  const payload = {
+    supplierId: Number(blackListForm.value.supplierId),
+    reason: blackListForm.value.reason.trim(),
+    dateAdded: blackListForm.value.dateAdded || formatIsoDate(new Date()),
+    addedBy: blackListForm.value.addedBy.trim(),
+    active: blackListForm.value.active,
+  };
+
+  if (blackListDialog.value.isEdit) {
+    const entry = blackList.value.find((row) => row.id === blackListDialog.value.entryId);
+    if (!entry) {
+      $q.notify({ type: 'negative', message: 'Запись черного списка не найдена.' });
+      return;
+    }
+    Object.assign(entry, payload);
+  } else {
+    blackList.value.unshift({
+      id: generateBlacklistId(),
+      ...payload,
+    });
+  }
+
+  blackListDialog.value.open = false;
+  persistState();
+  $q.notify({ type: 'positive', message: 'Запись черного списка сохранена.' });
+}
+
+function deleteBlacklistEntry(entry: BlacklistEntry): void {
+  $q.dialog({
+    title: 'Удаление записи',
+    message: `Удалить запись по поставщику "${supplierName(entry.supplierId)}"?`,
+    persistent: true,
+    ok: { label: 'Удалить', color: 'negative' },
+    cancel: { label: 'Отмена', flat: true },
+  }).onOk(() => {
+    blackList.value = blackList.value.filter((row) => row.id !== entry.id);
+    persistState();
+    $q.notify({ type: 'positive', message: 'Запись удалена.' });
+  });
+}
+
+function openCreateLimitDialog(): void {
+  limitDialog.value = { open: true, isEdit: false, limitId: null };
+  limitForm.value = emptyLimitForm();
+}
+
+function openEditLimitDialog(limit: ApprovalLimit): void {
+  limitDialog.value = { open: true, isEdit: true, limitId: limit.id };
+  limitForm.value = {
+    department: limit.department,
+    amount: limit.amount,
+    currency: limit.currency,
+    approver: limit.approver,
+    active: limit.active,
+    comment: limit.comment,
+  };
+}
+
+function saveLimitFromDialog(): void {
+  if (!limitForm.value.department.trim() || !limitForm.value.approver.trim() || limitForm.value.amount <= 0) {
+    $q.notify({ type: 'negative', message: 'Заполните подразделение, сумму лимита и согласующего.' });
+    return;
+  }
+
+  const duplicate = approvalLimits.value.find(
+    (row) =>
+      row.department.toLowerCase() === limitForm.value.department.trim().toLowerCase() &&
+      row.active &&
+      row.id !== limitDialog.value.limitId,
+  );
+  if (duplicate) {
+    $q.notify({ type: 'negative', message: 'Для этого подразделения уже существует активный лимит.' });
+    return;
+  }
+
+  const payload = {
+    department: limitForm.value.department.trim(),
+    amount: Number(limitForm.value.amount),
+    currency: 'RUB' as const,
+    approver: limitForm.value.approver.trim(),
+    active: limitForm.value.active,
+    comment: limitForm.value.comment.trim(),
+  };
+
+  if (limitDialog.value.isEdit) {
+    const limit = approvalLimits.value.find((row) => row.id === limitDialog.value.limitId);
+    if (!limit) {
+      $q.notify({ type: 'negative', message: 'Лимит не найден.' });
+      return;
+    }
+    Object.assign(limit, payload);
+  } else {
+    approvalLimits.value.push({
+      id: generateLimitId(),
+      ...payload,
+    });
+  }
+
+  limitDialog.value.open = false;
+  persistState();
+  $q.notify({ type: 'positive', message: 'Лимит согласования сохранен.' });
+}
+
+function deleteLimit(limit: ApprovalLimit): void {
+  $q.dialog({
+    title: 'Удаление лимита',
+    message: `Удалить лимит для "${limit.department}"?`,
+    persistent: true,
+    ok: { label: 'Удалить', color: 'negative' },
+    cancel: { label: 'Отмена', flat: true },
+  }).onOk(() => {
+    approvalLimits.value = approvalLimits.value.filter((row) => row.id !== limit.id);
+    persistState();
+    $q.notify({ type: 'positive', message: 'Лимит удален.' });
+  });
+}
+
 function roleLabel(roleCode: UserRole): string {
   const role = roleOptions.find((row) => row.value === roleCode);
   return role ? role.label : roleCode;
@@ -1229,11 +2409,79 @@ function statusColor(status: RequestStatus): string {
   return statusMeta[status].color;
 }
 
+function activeBlackListEntry(supplierId: number | null): BlacklistEntry | null {
+  if (!supplierId) {
+    return null;
+  }
+  return blackList.value.find((row) => row.supplierId === supplierId && row.active) ?? null;
+}
+
+function resolveApprovalLimit(request: ProcurementRequest): ApprovalLimit | null {
+  const exact = approvalLimits.value.find(
+    (row) =>
+      row.active &&
+      row.department.toLowerCase() === request.department.toLowerCase(),
+  );
+  if (exact) {
+    return exact;
+  }
+  return (
+    approvalLimits.value.find(
+      (row) => row.active && row.department.toLowerCase() === 'общий лимит',
+    ) ?? null
+  );
+}
+
+function expectedRoleCode(status: RequestStatus): UserRole | null {
+  if (status === 'draft' || status === 'need_fix' || status === 'rejected') {
+    return 'requester';
+  }
+  if (status === 'submitted') {
+    return 'system';
+  }
+  if (status === 'pending_approval') {
+    return 'manager';
+  }
+  if (status === 'registered' || status === 'order_sent' || status === 'act_uploaded') {
+    return 'supply';
+  }
+  if (status === 'invoice_received') {
+    return 'accounting';
+  }
+  if (status === 'paid') {
+    return 'system';
+  }
+  if (status === 'waiting_delivery' || status === 'warehouse_received' || status === 'closed') {
+    return 'warehouse';
+  }
+  return null;
+}
+
+function expectedRoleLabel(request: ProcurementRequest): string {
+  if (request.status === 'waiting_delivery' && isOverdue(request)) {
+    return `${roleLabel('system')} / ${roleLabel('supply')}`;
+  }
+  const code = expectedRoleCode(request.status);
+  return code ? roleLabel(code) : '—';
+}
+
+function daysInCurrentStatus(request: ProcurementRequest): number {
+  const now = Date.now();
+  const updated = new Date(request.updatedAt).getTime();
+  if (Number.isNaN(updated)) {
+    return 0;
+  }
+  const diff = now - updated;
+  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+}
+
 function availableActions(request: ProcurementRequest): ActionButton[] {
   const actionsByStatus: Record<RequestStatus, ActionKey[]> = {
     draft: ['edit', 'submit', 'autoComplete'],
     submitted: ['runCheck', 'autoComplete'],
     need_fix: ['edit', 'submit', 'autoComplete'],
+    pending_approval: ['approveRequest', 'rejectRequest', 'autoComplete'],
+    rejected: ['edit', 'submit'],
     registered: ['sendOrder', 'autoComplete'],
     order_sent: ['receiveInvoice', 'autoComplete'],
     invoice_received: ['payInvoice', 'autoComplete'],
@@ -1266,6 +2514,20 @@ function availableActions(request: ProcurementRequest): ActionButton[] {
       icon: 'task_alt',
       color: 'indigo-8',
       roles: ['system'],
+    },
+    approveRequest: {
+      key: 'approveRequest',
+      label: 'Одобрить заявку',
+      icon: 'how_to_reg',
+      color: 'positive',
+      roles: ['manager'],
+    },
+    rejectRequest: {
+      key: 'rejectRequest',
+      label: 'Отклонить заявку',
+      icon: 'block',
+      color: 'negative',
+      roles: ['manager'],
     },
     sendOrder: {
       key: 'sendOrder',
@@ -1342,7 +2604,7 @@ function availableActions(request: ProcurementRequest): ActionButton[] {
       label: 'Автопрогон до завершения',
       icon: 'smart_toy',
       color: 'accent',
-      roles: ['requester', 'supply', 'accounting', 'warehouse', 'system'],
+      roles: ['requester', 'manager', 'supply', 'accounting', 'warehouse', 'system'],
     },
   };
 
@@ -1386,6 +2648,18 @@ function buildStageGuidance(request: ProcurementRequest): StageGuidance {
         title: 'Автопроверка данных',
         roleLabel: roleSystem,
         text: 'ИС должна проверить корректность заявки и зарегистрировать ее или вернуть на доработку.',
+      };
+    case 'pending_approval':
+      return {
+        title: 'Требуется решение руководителя',
+        roleLabel: roleLabel('manager'),
+        text: 'Сумма превышает лимит подразделения. Руководитель должен одобрить или отклонить заявку.',
+      };
+    case 'rejected':
+      return {
+        title: 'Заявка отклонена',
+        roleLabel: roleRequester,
+        text: 'Исправьте данные (например, поставщика) и повторно отправьте заявку в ИС.',
       };
     case 'registered':
       return {
@@ -1467,6 +2741,12 @@ function runAction(actionKey: ActionKey, request: ProcurementRequest): void {
       return;
     case 'runCheck':
       runAutoCheck(request);
+      return;
+    case 'approveRequest':
+      approveRequest(request);
+      return;
+    case 'rejectRequest':
+      rejectRequest(request);
       return;
     case 'sendOrder':
       sendOrder(request);
@@ -1565,7 +2845,7 @@ function validateRequest(request: ProcurementRequest): string[] {
 }
 
 function submitRequest(request: ProcurementRequest, options?: { silent?: boolean }): void {
-  if (!(request.status === 'draft' || request.status === 'need_fix')) {
+  if (!(request.status === 'draft' || request.status === 'need_fix' || request.status === 'rejected')) {
     return;
   }
   request.validationErrors = [];
@@ -1597,6 +2877,35 @@ function runAutoCheck(request: ProcurementRequest, options?: { silent?: boolean 
     return;
   }
 
+  const blackListEntry = activeBlackListEntry(request.supplierId);
+  if (blackListEntry) {
+    request.validationErrors = [`Поставщик в черном списке: ${blackListEntry.reason}`];
+    logEvent(request, 'ИС', 'Автопроверка: поставщик заблокирован', blackListEntry.reason, 'rejected');
+    persistState();
+    if (!options?.silent) {
+      $q.notify({ type: 'negative', message: 'Поставщик в черном списке. Заявка отклонена.' });
+    }
+    return;
+  }
+
+  const limit = resolveApprovalLimit(request);
+  const total = requestTotal(request);
+  if (limit && total > limit.amount) {
+    request.validationErrors = [];
+    logEvent(
+      request,
+      'ИС',
+      'Автопроверка: требуется согласование',
+      `Сумма ${formatMoney(total)} превышает лимит ${formatMoney(limit.amount)} (${limit.department})`,
+      'pending_approval',
+    );
+    persistState();
+    if (!options?.silent) {
+      $q.notify({ type: 'warning', message: 'Сумма превышает лимит. Требуется решение руководителя.' });
+    }
+    return;
+  }
+
   request.validationErrors = [];
   if (!request.registrationNumber) {
     request.registrationNumber = generateRegistrationNumber();
@@ -1611,6 +2920,39 @@ function runAutoCheck(request: ProcurementRequest, options?: { silent?: boolean 
   persistState();
   if (!options?.silent) {
     $q.notify({ type: 'positive', message: 'Автопроверка успешна. Заявка зарегистрирована.' });
+  }
+}
+
+function approveRequest(request: ProcurementRequest, options?: { silent?: boolean }): void {
+  if (request.status !== 'pending_approval') {
+    return;
+  }
+  if (!request.registrationNumber) {
+    request.registrationNumber = generateRegistrationNumber();
+  }
+  request.validationErrors = [];
+  logEvent(
+    request,
+    'Руководитель',
+    'Заявка согласована',
+    `Регистрационный номер: ${request.registrationNumber}`,
+    'registered',
+  );
+  persistState();
+  if (!options?.silent) {
+    $q.notify({ type: 'positive', message: 'Руководитель согласовал заявку.' });
+  }
+}
+
+function rejectRequest(request: ProcurementRequest, options?: { silent?: boolean }): void {
+  if (request.status !== 'pending_approval') {
+    return;
+  }
+  request.validationErrors = ['Требуется пересмотр заявки после отклонения руководителем.'];
+  logEvent(request, 'Руководитель', 'Заявка отклонена', 'Необходимо скорректировать параметры заявки.', 'rejected');
+  persistState();
+  if (!options?.silent) {
+    $q.notify({ type: 'negative', message: 'Заявка отклонена руководителем.' });
   }
 }
 
@@ -1812,14 +3154,21 @@ function autoComplete(request: ProcurementRequest): void {
   let guard = 0;
   while (request.status !== 'completed' && guard < 20) {
     guard += 1;
-    if (request.status === 'draft' || request.status === 'need_fix') {
+    if (request.status === 'draft' || request.status === 'need_fix' || request.status === 'rejected') {
       ensureRequestValidForAutoflow(request);
+      if (request.status === 'rejected') {
+        request.supplierId = suppliers.value.find((row) => !activeBlackListEntry(row.id))?.id ?? request.supplierId;
+      }
       logEvent(request, 'Подразделение-заказчик', 'Автоисправление заявки', 'Данные приведены к корректному формату');
       submitRequest(request, { silent: true });
       continue;
     }
     if (request.status === 'submitted') {
       runAutoCheck(request, { silent: true });
+      continue;
+    }
+    if (request.status === 'pending_approval') {
+      approveRequest(request, { silent: true });
       continue;
     }
     if (request.status === 'registered') {
@@ -1868,7 +3217,7 @@ function autoComplete(request: ProcurementRequest): void {
 
 function stepVisualState(request: ProcurementRequest, stepCode: ProcessStep['code']): StepVisualState {
   const current = STATUS_TO_STEP[request.status] || 1;
-  if (request.status === 'need_fix' && stepCode === 'check') {
+  if ((request.status === 'need_fix' || request.status === 'rejected') && stepCode === 'check') {
     return 'error';
   }
   const step = processSteps.find((item) => item.code === stepCode);
@@ -1974,6 +3323,8 @@ function requestStatusProgress(status: RequestStatus): number {
     draft: 0,
     submitted: 1,
     need_fix: 1,
+    pending_approval: 2,
+    rejected: 1,
     registered: 2,
     order_sent: 3,
     invoice_received: 4,
@@ -2004,10 +3355,10 @@ function graphNodeState(request: ProcurementRequest, spec: BpmnGraphNodeSpec): S
     return request.status === 'completed' ? 'done' : 'pending';
   }
   if (spec.id === 'gw-valid') {
-    if (request.status === 'need_fix') {
+    if (request.status === 'need_fix' || request.status === 'rejected') {
       return 'error';
     }
-    if (request.status === 'submitted') {
+    if (request.status === 'submitted' || request.status === 'pending_approval') {
       return 'current';
     }
     return progress >= 2 ? 'done' : 'pending';

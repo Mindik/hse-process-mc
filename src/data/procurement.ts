@@ -1,9 +1,11 @@
-export type UserRole = 'requester' | 'supply' | 'accounting' | 'warehouse' | 'system';
+export type UserRole = 'requester' | 'manager' | 'supply' | 'accounting' | 'warehouse' | 'system';
 
 export type RequestStatus =
   | 'draft'
   | 'submitted'
   | 'need_fix'
+  | 'pending_approval'
+  | 'rejected'
   | 'registered'
   | 'order_sent'
   | 'invoice_received'
@@ -85,6 +87,25 @@ export interface ProcurementRequest {
   updatedAt: string;
 }
 
+export interface BlacklistEntry {
+  id: number;
+  supplierId: number;
+  reason: string;
+  dateAdded: string;
+  addedBy: string;
+  active: boolean;
+}
+
+export interface ApprovalLimit {
+  id: number;
+  department: string;
+  amount: number;
+  currency: 'RUB';
+  approver: string;
+  active: boolean;
+  comment: string;
+}
+
 export interface ProcessStep {
   code: string;
   index: number;
@@ -111,6 +132,8 @@ export interface ProcurementState {
   suppliers: Supplier[];
   products: Product[];
   requests: ProcurementRequest[];
+  blackList: BlacklistEntry[];
+  approvalLimits: ApprovalLimit[];
   selectedRequestId: string | null;
 }
 
@@ -118,6 +141,8 @@ export const STATUS_META: Record<RequestStatus, { label: string; color: string }
   draft: { label: 'Черновик', color: 'grey-7' },
   submitted: { label: 'На автопроверке ИС', color: 'indigo-7' },
   need_fix: { label: 'Требует исправления', color: 'negative' },
+  pending_approval: { label: 'Ожидает решения руководителя', color: 'blue-8' },
+  rejected: { label: 'Отклонена', color: 'red-9' },
   registered: { label: 'Зарегистрирована', color: 'primary' },
   order_sent: { label: 'Заказ отправлен поставщику', color: 'deep-orange-7' },
   invoice_received: { label: 'Счет получен', color: 'brown-7' },
@@ -147,6 +172,8 @@ export const STATUS_TO_STEP: Record<RequestStatus, number> = {
   draft: 1,
   submitted: 2,
   need_fix: 2,
+  pending_approval: 3,
+  rejected: 2,
   registered: 3,
   order_sent: 4,
   invoice_received: 5,
@@ -671,12 +698,68 @@ export function createRequests(): ProcurementRequest[] {
   ];
 }
 
+export function createBlacklistEntries(): BlacklistEntry[] {
+  return [
+    {
+      id: 1,
+      supplierId: 4,
+      reason: 'Повторные срывы сроков поставки и неполный комплект документов.',
+      dateAdded: dateOffset(-35),
+      addedBy: 'Служба внутреннего контроля',
+      active: true,
+    },
+  ];
+}
+
+export function createApprovalLimits(): ApprovalLimit[] {
+  return [
+    {
+      id: 1,
+      department: 'Цех мехобработки',
+      amount: 110000,
+      currency: 'RUB',
+      approver: 'Руководитель направления закупок',
+      active: true,
+      comment: 'Стандартный лимит подразделения.',
+    },
+    {
+      id: 2,
+      department: 'Склад готовой продукции',
+      amount: 260000,
+      currency: 'RUB',
+      approver: 'Руководитель направления закупок',
+      active: true,
+      comment: 'Лимит повышен из-за сезонной нагрузки.',
+    },
+    {
+      id: 3,
+      department: 'Ремонтная служба',
+      amount: 100000,
+      currency: 'RUB',
+      approver: 'Руководитель направления закупок',
+      active: true,
+      comment: 'Базовый лимит без допсогласования.',
+    },
+    {
+      id: 4,
+      department: 'Общий лимит',
+      amount: 150000,
+      currency: 'RUB',
+      approver: 'Руководитель направления закупок',
+      active: true,
+      comment: 'Применяется, если нет лимита по подразделению.',
+    },
+  ];
+}
+
 export function createDemoState(): ProcurementState {
   const requests = createRequests();
   return {
     suppliers: createSuppliers(),
     products: createProducts(),
     requests,
+    blackList: createBlacklistEntries(),
+    approvalLimits: createApprovalLimits(),
     selectedRequestId: requests[0]?.id ?? null,
   };
 }
